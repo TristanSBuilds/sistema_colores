@@ -1,25 +1,101 @@
-import express, { json } from "express"
+import express from "express"
+import bcrypt from "bcrypt"
+import jwt from "jsonwebtoken"
 
-import {leerColores, crearColor, borrarColor, actualizarColor} from "./datos.js"
+import dotenv from "dotenv"
+dotenv.config()
+
+import {
+    leerColores, crearColor, borrarColor, actualizarColor, buscarUsuario
+} from "./datos.js"
 
 const app = express()
 
+
+// funcion para verificar si el token es correcto y darle acceso a la info 
+function autorizar(req,res,next){
+    // desesctructuramos el token desde el HEADER (no el body)
+    let {authorization} = req.headers
+
+    // si el header viene vacio -> 401 unauthorised
+    if(authorization == undefined){
+        return res.sendStatus(401)
+    }
+
+    let posibleToken = authorization.split(" ")
+
+    if(posibleToken[0] != "Bearer" || !posibleToken[1]){
+        return next(true)
+    }
+    
+    jwt.verify(posibleToken[1],process.env.SECRET, (error, datos) => {
+        // si no lo admite -> 401 unauthorised
+        if(error){
+            return res.send(401) 
+        }
+        /* si el token es correcto guardamos los datos del token (que 
+        contiene el id) en el obj req
+        */
+        req.usuario = datos.id
+        // pasamos el middleware y le damos acceso a su info
+        next()
+    })   
+}
+
 /*
-activamos el traductor json, cuando el front envie datos con req.body
-los transfroma de texto plano a obj de js
+middleware q activa el traductor json, cuando el front envie datos
+con req.body los transfroma de texto plano a obj js
 */
 app.use(express.json())
 
 // servimos los ficheros estaticos
-app.use(express.static("./front"))
+//app.use(express.static("./front"))
+
+// endpoint de login, esta abierto
+app.post("/login", async (req,res,next) => {
+    // desesctrucutramos ususario y contraeña de la peticion
+    let {usuario, password} = req.body
+    
+    // si alguno de los dos viene vacio -> 400 bad request
+    if(usuario == undefined || password == undefined){
+        return next(true)
+    }
+    
+    // llamamos a la fun y esperamos que busque el usuario en la bbdd
+    let usuarioBBDD = await buscarUsuario(usuario)
+        
+    // si no encuentra el usuario -> 401 unauthorised
+    if(!usuarioBBDD){
+        return res.sendStatus(401)
+    }
+
+    // esperamos a q bcrypt compare la contraseña con la encriptada q devuelve bool
+    let valido = await bcrypt.compare(password, usuarioBBDD.password)
+
+    // si no son iguales -> 403 forbbiden
+    if(!valido){
+        return res.sendStatus(403)
+    }
+    
+    // si user y password bien, creamos token pasandole el id como dato y el secret
+    let token = jwt.sign({id : usuarioBBDD._id}, process.env.SECRET)
+
+    // devolvemos el token como respuesta para el front
+    res.json({token})
+})
 
 /*
-cuando entras a la url se ejecuta, es una funcion asincrona
+todo lo que esta debajo de este middleware es info privada y debe 
+pasar por la funcion de autorizar para acceder a los datos
 */
+app.use(autorizar)
+
+
+// cuando entras a la url se ejecuta, es una funcion asincrona
 app.get("/colores", async (req,res) => {
     try{
         // prueba a leer los colores, espera a recibir la res y los guarda en la variable
-        let colores = await leerColores()
+        let colores = await leerColores(req.usuario)
 
         // los parsea, descodifca de json a obj js
         res.json(colores)
@@ -59,8 +135,9 @@ app.post("/nuevo", async (req,res,next) => {
 
     // si sigue siendo valido ejecuta este bloque
     try{
+        let {usuario} = req
         // llamamos a la funcion y guarda en colores.json el color y devuelve el id
-        let _id = await crearColor({r,g,b}) 
+        let _id = await crearColor({r,g,b,usuario}) 
 
         // devolvemos estado 201 al crear hacer post y haya ido bien 
         res.status(201)
@@ -142,9 +219,6 @@ app.put("/actualizar/:id", async (req, res, next) => {
 
     // si pasa el id y el rgb como validos ejecutamos este bloque
     try{
-
-        
-
         // llamamos a la funcion y le pasamos el id y los valores nuevos
         let {matchedCount} = await actualizarColor(req.params.id, objActualizar)
         

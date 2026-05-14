@@ -68,7 +68,7 @@ fetch("/colores")
 .then( res => res.json())
 .then( colores => {
     colores.forEach( c => {
-        // por cada color que nos llega del back cremaos un nuevo LI
+        // por cada color que nos llega del back creamos un nuevo LI
         new Color(c, contenedorColores)
     })
 })
@@ -125,7 +125,7 @@ formulario.addEventListener("submit", e => {
                 inputTexto.value = "";
             })
             .catch( e => {
-                console.log("infromar user del error")
+                console.log("informar user del error")
             })
         }
     }

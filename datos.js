@@ -7,7 +7,33 @@ function conectar(){
     return MongoClient.connect(process.env.MONGO_URL)
 }
 
-export function leerColores(){
+export function buscarUsuario(usuario){
+    return new Promise((ok,ko) => {
+        let conexion = null
+
+        conectar()
+        .then(conexMongo => {
+            conexion = conexMongo
+
+            let coleccion = conexion.db("colores").collection("usuarios")
+            return coleccion.findOne({usuario})
+        })
+        .then(usuario => ok(usuario))
+        .catch( e => ko({error : "error en bbdd"}))
+        // finalmente cerramos la conexion
+        .finally(() => {
+            if(conexion){
+                conexion.close()
+            }
+        })
+    })
+}
+
+buscarUsuario("pepe")
+.then(x => console.log(x))
+.catch(x => console.log(x))
+
+export function leerColores(usuario){
     // creamos promesa con exito o fallo
     return new Promise((ok,ko) => {
 
@@ -23,7 +49,7 @@ export function leerColores(){
             // guardamos la coleccion a la que queremos acceder
             let coleccion = conexion.db("colores").collection("colores")
             // mostramos como array TODO lo que hay en la coleccion
-            return coleccion.find({}).toArray()
+            return coleccion.find({usuario}).toArray()
         })
         // si se muestra el array pasamos ok con los colores
         .then( colores => ok(colores))
@@ -38,7 +64,7 @@ export function leerColores(){
     })
 }
 
-export function crearColor(objColor){
+export function crearColor(obj){
     return new Promise((ok,ko) => {
 
         let conexion = null
@@ -47,8 +73,8 @@ export function crearColor(objColor){
         .then( conexMongo => {
             conexion = conexMongo
             let coleccion = conexion.db("colores").collection("colores")
-            // le pasamos el objeto a insertar
-            return coleccion.insertOne(objColor)
+
+            return coleccion.insertOne(obj)
         })
         // le pedimos que nos devuelva solo el id del obj creado
         .then( resultado => ok(resultado.insertedId))
@@ -60,7 +86,11 @@ export function crearColor(objColor){
         })
     })
 }
-
+/*
+crearColor({usuario : '6a04524b339603b1c0ee62fc', r : 50, g : 0, b : 250})
+.then(x => console.log(x))
+.catch(x => console.log(x))
+*/
 export function borrarColor(id){
     return new Promise((ok,ko) => {
 
