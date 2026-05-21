@@ -1,6 +1,7 @@
 import express from "express"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
+import cors from "cors"
 
 import dotenv from "dotenv"
 dotenv.config()
@@ -10,6 +11,9 @@ import {
 } from "./datos.js"
 
 const app = express()
+
+// aceptatamos peticiones de todos los dominios
+app.use(cors())
 
 
 // funcion para verificar si el token es correcto y darle acceso a la info 
@@ -22,12 +26,15 @@ function autorizar(req,res,next){
         return res.sendStatus(401)
     }
 
+    // spliteamos el header entre spaces
     let posibleToken = authorization.split(" ")
 
+    // si la primera parte no es Bearer o no hay segunda parte(el token) -> 400 bad request
     if(posibleToken[0] != "Bearer" || !posibleToken[1]){
         return next(true)
     }
     
+    // comprobamos el token(segunda parte del header) con el secret que esta en el .env
     jwt.verify(posibleToken[1],process.env.SECRET, (error, datos) => {
         // si no lo admite -> 401 unauthorised
         if(error){
@@ -53,7 +60,7 @@ app.use(express.json())
 
 // endpoint de login, esta abierto
 app.post("/login", async (req,res,next) => {
-    // desesctrucutramos ususario y contraeña de la peticion
+    // desesctructuramos usuario y contraseña de la peticion
     let {usuario, password} = req.body
     
     // si alguno de los dos viene vacio -> 400 bad request
@@ -94,7 +101,7 @@ app.use(autorizar)
 // cuando entras a la url se ejecuta, es una funcion asincrona
 app.get("/colores", async (req,res) => {
     try{
-        // prueba a leer los colores, espera a recibir la res y los guarda en la variable
+        // leemos los los colores del usuario que nos pasen
         let colores = await leerColores(req.usuario)
 
         // los parsea, descodifca de json a obj js
@@ -136,7 +143,8 @@ app.post("/nuevo", async (req,res,next) => {
     // si sigue siendo valido ejecuta este bloque
     try{
         let {usuario} = req
-        // llamamos a la funcion y guarda en colores.json el color y devuelve el id
+        
+        // le pasamos el color y el usuario para que guarde cada color en el user indicado
         let _id = await crearColor({r,g,b,usuario}) 
 
         // devolvemos estado 201 al crear hacer post y haya ido bien 

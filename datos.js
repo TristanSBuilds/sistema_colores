@@ -15,9 +15,12 @@ export function buscarUsuario(usuario){
         .then(conexMongo => {
             conexion = conexMongo
 
+            // buscamos las coleccion usuarios
             let coleccion = conexion.db("colores").collection("usuarios")
+            // devolvemos el usuario si lo encontramos
             return coleccion.findOne({usuario})
         })
+        // devolvemos el usuario
         .then(usuario => ok(usuario))
         .catch( e => ko({error : "error en bbdd"}))
         // finalmente cerramos la conexion
@@ -28,11 +31,13 @@ export function buscarUsuario(usuario){
         })
     })
 }
-
+/*
 buscarUsuario("pepe")
 .then(x => console.log(x))
 .catch(x => console.log(x))
+*/
 
+// le pasamos el usuario para que sepa que colores leer
 export function leerColores(usuario){
     // creamos promesa con exito o fallo
     return new Promise((ok,ko) => {
@@ -48,10 +53,10 @@ export function leerColores(usuario){
             conexion = conexMongo
             // guardamos la coleccion a la que queremos acceder
             let coleccion = conexion.db("colores").collection("colores")
-            // mostramos como array TODO lo que hay en la coleccion
+            // mostramos como array los colores del usuario que nos han pasado
             return coleccion.find({usuario}).toArray()
         })
-        // si se muestra el array pasamos ok con los colores
+        // devolvemos los colores que hemos encontrado del usuario
         .then( colores => ok(colores))
         // si hay error en la conexion o en mostrar los colores
         .catch( e => ko({error : "error en bbdd"}))
@@ -64,6 +69,7 @@ export function leerColores(usuario){
     })
 }
 
+// obj contiene r,g,b y usuario
 export function crearColor(obj){
     return new Promise((ok,ko) => {
 
